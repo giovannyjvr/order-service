@@ -5,6 +5,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import java.util.Date;
 
 @Component
@@ -17,31 +18,41 @@ public class JwtUtil {
     private long expirationMs;
 
     public String generateToken(String username) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expirationMs);
         return Jwts.builder()
-                .setSubject(username)
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(SignatureAlgorithm.HS256, secret)
-                .compact();
+                   .setSubject(username)
+                   .setIssuedAt(now)
+                   .setExpiration(expiryDate)
+                   .signWith(SignatureAlgorithm.HS512, secret)
+                   .compact();
+    }
+
+    public boolean validateToken(String token) {
+        try {
+            getClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String getUsernameFromToken(String token) {
+        return getClaims(token).getSubject();
     }
 
     public String extractUsername(String token) {
         return getClaims(token).getSubject();
     }
 
-    public boolean validateToken(String token) {
-        try {
-            Claims claims = getClaims(token);
-            return !claims.getExpiration().before(new Date());
-        } catch (Exception e) {
-            return false;
-        }
-    }
 
     private Claims getClaims(String token) {
-        return Jwts.parser()
-                .setSigningKey(secret)
-                .parseClaimsJws(token.replace("Bearer ", ""))
-                .getBody();
+        return Jwts
+            .parser()                         // → JwtParserBuilder
+            .setSigningKey(secret)            // → JwtParserBuilder
+            .build()                          // → JwtParser
+            .parseClaimsJws(token.replace("Bearer ", "")) // agora ok
+            .getBody();
     }
+    
 }
